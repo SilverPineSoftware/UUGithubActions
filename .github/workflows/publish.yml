@@ -11,59 +11,9 @@ on:
 
 jobs:
 
-  verify:
-    name: Verify build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: ${{ vars.UU_JAVA_DISTRIBUTION }}
-          java-version: ${{ vars.UU_JAVA_VERSION }}
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
-
-      - name: Build
-        run: ./gradlew build --no-daemon
-
-  publish:
-    name: Publish convention plugins and catalog
-    needs: [verify]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: ${{ vars.UU_JAVA_DISTRIBUTION }}
-          java-version: ${{ vars.UU_JAVA_VERSION }}
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
-
-      - name: Publish
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew publishAllPublicationsToGitHubPackagesRepository -Pversion=${{ github.ref_name }}
-
   create-release:
     needs: [verify, publish]
     uses: ./.github/workflows/uu_create_release.yml
     secrets:
       UU_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  prepare-next-version:
-    needs: [create-release]
-    if: success()
-    uses: ./.github/workflows/prepare-next-version.yml
-    with:
-      continue_on_error: true
-    secrets:
-      RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
