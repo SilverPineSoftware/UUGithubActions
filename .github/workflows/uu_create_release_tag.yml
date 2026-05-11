@@ -1,0 +1,32 @@
+name: UU Create Release Tag
+permissions:
+  contents: write
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0). If not specified, uses version from gradle.properties'
+        required: false
+        type: string
+      gradle_properties_path:
+        description: 'Optional folder path where gradle.properties exists. Defaults to root if empty'
+        required: false
+        type: string
+    secrets:
+      RELEASE_PAT:
+        required: true
+  
+jobs:
+  create-tag:
+    name: Create Release Tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Release Tag
+        id: create-tag
+        uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-create-release-tag@main
+        with:
+          version: ${{ inputs.version }}
+          gradle_properties_path: ${{ inputs.gradle_properties_path }}
+          release_pat: ${{ secrets.RELEASE_PAT }}
+

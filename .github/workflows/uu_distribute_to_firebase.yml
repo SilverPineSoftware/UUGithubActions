@@ -1,0 +1,36 @@
+name: UU Distribute To Firebase
+permissions:
+  contents: read
+ 
+on:
+  workflow_call:
+    inputs:
+      distribution_group:
+        description: 'Firebase Distribution Group'
+        required: false
+        type: string
+        default: ''
+      full_version:
+        description: 'Full Build Version'
+        required: true
+        type: string
+        default: ''
+    secrets:
+      FIREBASE_CREDENTIALS:
+        required: true
+      FIREBASE_APP_ID:
+        required: false
+      
+jobs:
+  build:
+    name: Distribute to Firebase
+    runs-on: macos-latest
+    steps:
+      - name: Distribute to Firebase
+        uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-distribute-to-firebase@main
+        with:
+          distribution_group: ${{ inputs.distribution_group }}
+          full_version: ${{ inputs.full_version }}
+          firebase_credentials: ${{ secrets.FIREBASE_CREDENTIALS }}
+          firebase_app_id: ${{ secrets.FIREBASE_APP_ID }}
+

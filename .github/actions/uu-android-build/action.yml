@@ -1,0 +1,109 @@
+name: 'UU Android Build'
+description: 'Build a library or application'
+
+inputs:
+  module_name:
+    description: 'Gradle module name'
+    required: false
+    default: 'app'
+  module_folder:
+    description: 'Optional relative path to module source folder.'
+    required: false
+    default: '.'
+  build_suffix:
+    description: 'Build Suffix'
+    required: false
+    default: ''
+  java_distribution:
+    description: 'Java distribution'
+    required: true
+  java_version:
+    description: 'Java version'
+    required: true
+  bundle_release:
+    description: 'Whether to bundle the release'
+    required: false
+    default: 'false'
+  signing_key:
+    description: 'Signing key'
+    required: false
+    default: ''
+  signing_password:
+    description: 'Signing password'
+    required: false
+    default: ''
+
+outputs:
+  full_version:
+    description: 'The full version string that was set in gradle.properties'
+    value: ${{ steps.prepare.outputs.version }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Prepare Build
+      id: prepare
+      uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-android-build-prepare@main
+      with:
+        module_name: ${{ inputs.module_name }}
+        module_folder: ${{ inputs.module_folder }}
+        build_suffix: ${{ inputs.build_suffix }}
+        java_distribution: ${{ inputs.java_distribution }}
+        java_version: ${{ inputs.java_version }}
+  
+    - name: Clean
+      run: | 
+        if [ -n "${{ inputs.module_folder }}" ]; then
+          cd "${{ inputs.module_folder }}"
+        fi
+        ./gradlew clean
+      shell: bash
+    
+    - name: Run Unit Tests
+      run: | 
+        if [ -n "${{ inputs.module_folder }}" ]; then
+          cd "${{ inputs.module_folder }}"
+        fi
+        ./gradlew :${{ inputs.module_name }}:test
+      shell: bash
+
+    - name: Setup Signing
+      if: inputs.signing_key != ''
+      run: |
+        echo ${{ inputs.signing_key }} | base64 --decode >> ${{ inputs.module_folder }}/${{ inputs.module_name }}/release.keystore
+      shell: bash
+    
+    - name: Assemble Release
+      run: | 
+        if [ -n "${{ inputs.module_folder }}" ]; then
+          cd "${{ inputs.module_folder }}"
+        fi
+        ./gradlew :${{ inputs.module_name }}:assembleRelease
+      shell: bash
+      env:
+        SIGNING_PASSWORD: ${{ inputs.signing_password }}
+
+    - name: Bundle Release
+      if: inputs.bundle_release == 'true'
+      run: | 
+        if [ -n "${{ inputs.module_folder }}" ]; then
+          cd "${{ inputs.module_folder }}"
+        fi
+        ./gradlew :${{ inputs.module_name }}:bundleRelease
+      shell: bash
+      env:
+        SIGNING_PASSWORD: ${{ inputs.signing_password }}
+
+    - name: Extract repo name
+      id: repo-name
+      run: |
+        REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+        echo "name=$REPO_NAME" >> $GITHUB_OUTPUT
+      shell: bash
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ steps.repo-name.outputs.name }}-${{ inputs.module_name }}-build-artifacts-${{ steps.prepare.outputs.version }}
+        path: ${{ inputs.module_folder }}/${{ inputs.module_name }}/build/outputs
+

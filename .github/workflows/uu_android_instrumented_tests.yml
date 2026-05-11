@@ -1,0 +1,62 @@
+name: UU Android Instrumented Tests
+permissions:
+  contents: read
+ 
+on:
+  workflow_call:
+    secrets:
+      RELEASE_PAT:
+        description: 'PAT with read:packages for SilverpineSoftware GitHub Packages (Gradle plugins from UUKotlinBuild). Pass caller repo secret.'
+        required: false
+    inputs:
+      configuration:
+        description: 'Test configuration to run'
+        required: false
+        type: string
+        default: 'quickGroup'
+      runner:
+        description: 'Runner environment'
+        required: false
+        type: string
+        default: 'ubuntu-latest'
+      module_name:
+        description: 'Gradle module name'
+        required: false
+        type: string
+        default: 'app'
+      module_folder:
+        description: 'Gradle module folder'
+        required: false
+        type: string
+        default: '.'
+      java_distribution:
+        description: 'Java distribution'
+        required: false
+        type: string
+      java_version:
+        description: 'Java version'
+        required: false
+        type: string
+      build_suffix:
+        description: 'Build suffix for versioning'
+        required: false
+        type: string
+        
+jobs:
+  instrumented-tests:
+    name: Run Android Instrumented Tests (${{ inputs.configuration }})
+    runs-on: ${{ inputs.runner }}
+    env:
+      GPR_TOKEN: ${{ secrets.RELEASE_PAT || github.token }}
+    steps:
+      - name: Run Instrumented Tests
+        uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-android-instrumented-tests@main
+        with:
+          configuration: ${{ inputs.configuration }}
+          module_name: ${{ inputs.module_name }}
+          module_folder: ${{ inputs.module_folder }}
+          build_suffix: ${{ inputs.build_suffix || github.run_number }}
+          java_distribution: ${{ inputs.java_distribution || vars.UU_JAVA_DISTRIBUTION }}
+          java_version: ${{ inputs.java_version || vars.UU_JAVA_VERSION }}
+          runner: ${{ inputs.runner }}
+

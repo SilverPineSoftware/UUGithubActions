@@ -1,0 +1,22 @@
+name: UU Get Snapshot Build Suffix
+permissions:
+  contents: read
+ 
+on:
+  workflow_call:
+    outputs:
+      build_suffix:
+        description: 'The full build suffix with build number and branch'
+        value: ${{ jobs.get-build-suffix.outputs.build_suffix }}
+
+jobs:
+  get-build-suffix:
+    name: Get Build Suffix
+    runs-on: ubuntu-latest
+    outputs:
+      build_suffix: ${{ steps.get-build-suffix.outputs.build_suffix }}
+    
+    steps:
+      - name: Make Build Suffix
+        uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-get-snapshot-build-suffix@main
+        id: get-build-suffix

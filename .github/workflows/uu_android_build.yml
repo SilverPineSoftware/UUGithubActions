@@ -1,0 +1,66 @@
+name: UU Android Build
+permissions:
+  contents: read
+ 
+on:
+  workflow_call:
+    inputs:
+      module_name:
+        description: 'Gradle module name'
+        required: false
+        type: string
+        default: 'app'
+      module_folder:
+        description: 'Gradle module folder'
+        required: false
+        type: string
+        default: '.'
+      java_distribution:
+        description: 'Java distribution'
+        required: false
+        type: string
+      java_version:
+        description: 'Java version'
+        required: false
+        type: string
+      bundle_release:
+          description: 'Whether to bundle the release'
+          required: false
+          type: boolean
+          default: false
+      build_suffix:
+        description: 'Build suffix for versioning'
+        required: false
+        type: string
+    secrets:
+      SIGNING_KEY:
+        required: false
+      SIGNING_PASSWORD:
+        required: false
+    outputs:
+      full_version:
+        description: 'The full build suffix with build number and branch'
+        value: ${{ jobs.build.outputs.full_version }}
+
+
+jobs:
+  build:
+    name: Do Build
+    runs-on: macos-latest
+    outputs:
+      full_version: ${{ steps.build.outputs.full_version }}
+    
+    steps:
+      - name: Build
+        id: build
+        uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-android-build@main
+        with:
+          module_name: ${{ inputs.module_name }}
+          module_folder: ${{ inputs.module_folder }}
+          build_suffix: ${{ inputs.build_suffix || github.run_number }}
+          java_distribution: ${{ inputs.java_distribution || vars.UU_JAVA_DISTRIBUTION }}
+          java_version: ${{ inputs.java_version || vars.UU_JAVA_VERSION }}
+          bundle_release: ${{ inputs.bundle_release }}
+          signing_key: ${{ secrets.SIGNING_KEY }}
+          signing_password: ${{ secrets.SIGNING_PASSWORD }}
+

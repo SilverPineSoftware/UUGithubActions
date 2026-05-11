@@ -1,0 +1,48 @@
+name: 'UU Android Build Prepare'
+description: 'Perforam common actions for building a library or application'
+
+inputs:
+  module_name:
+    description: 'Gradle module name'
+    required: false
+    default: 'app'
+  module_folder:
+    description: 'Optional relative path to module source folder.'
+    required: false
+    default: '.'
+  java_distribution:
+    description: 'Java distribution'
+    required: true
+  java_version:
+    description: 'Java version'
+    required: true
+  build_suffix:
+    description: 'Build Suffix'
+    required: false
+    default: ''
+
+outputs:
+  version:
+    description: 'The full version string that was set in gradle.properties'
+    value: ${{ steps.update-version.outputs.version }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check out code
+      uses: actions/checkout@v6
+      
+    - name: Update Version
+      id: update-version
+      uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-update-version@main
+      with:
+        module_folder: ${{ inputs.module_folder }}
+        build_suffix: ${{ inputs.build_suffix }}
+   
+    - name: Setup Java
+      uses: actions/setup-java@v5
+      with:
+        distribution: ${{ inputs.java_distribution }}
+        java-version: ${{ inputs.java_version }}
+  
+        

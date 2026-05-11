@@ -1,0 +1,153 @@
+name: 'UU Distribute to Google Play'
+description: 'Upload an Android AAB to Firebase App Distribution'
+
+inputs:
+  google_play_credentials:
+    description: 'Google Play credentials encoded in base64'
+    required: true
+  package_name:
+    description: 'Package name - ie com.foo.app'
+    required: true
+  full_version:
+    description: 'Full build version'
+    required: true
+  distribution_track:
+    description: 'Google Play Distribution Track'
+    required: false
+    default: 'internal'
+
+runs:
+  using: 'composite'
+  steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+    
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: '*-build-artifacts-*'
+          path: build-artifacts
+    
+      - name: Extract build artifacts
+        id: extract-artifacts
+        shell: bash
+        run: |
+          
+          BINARY_PATH=$(ls build-artifacts/bundle/release/*.aab)
+          echo "Binary Path: $BINARY_PATH"
+          
+          if [ -z $BINARY_PATH ]; then
+            echo "No Binary file found!"
+            ls -R
+            exit 1
+          fi
+          
+          # Get absolute path
+          BINARY_ABSOLUTE_PATH=$(realpath "$BINARY_PATH")
+          echo "binary_path=$BINARY_ABSOLUTE_PATH" >> $GITHUB_OUTPUT
+          echo "Absolute Binary Path: $BINARY_ABSOLUTE_PATH"
+          
+          MAPPING_PATH=$(ls build-artifacts/mapping/release/mapping.txt)
+          MAPPING_ABSOLUTE_PATH=$(realpath "$MAPPING_PATH")
+          echo "MAPPING_PATH: $MAPPING_PATH"
+          echo "mapping_path=$MAPPING_PATH" >> $GITHUB_OUTPUT
+          
+      - name: 'Set up Cloud SDK'
+        shell: bash
+        run: |
+          echo "Downloading gcloug from brew"
+          brew update && brew install --cask google-cloud-sdk
+
+      - name: 'Use gcloud CLI'
+        shell: bash
+        run: 'gcloud info'
+      
+      - name: Upload to Google Play
+        shell: bash
+        run: |
+          echo "Exracting Google Play Credentials"
+          echo "${{ inputs.google_play_credentials }}" | base64 --decode > google-credentials.json
+          CREDENTIALS_FULL_PATH=$(realpath google-credentials.json)
+          echo "CREDENTIALS_FULL_PATH: $CREDENTIALS_FULL_PATH"
+        
+          export GOOGLE_APPLICATION_CREDENTIALS="${CREDENTIALS_FULL_PATH}"
+        
+          BINARY_PATH=${{ steps.extract-artifacts.outputs.binary_path }}
+          echo "BINARY_PATH: $BINARY_PATH"
+        
+          MAPPING_PATH=${{ steps.extract-artifacts.outputs.mapping_path }}
+          echo "MAPPING_PATH: $MAPPING_PATH"
+        
+          echo "Uploading to Google Play"
+        
+          PACKAGE_NAME=${{ inputs.package_name }}
+          TRACK=${{ inputs.distribution_track }}
+          RELEASE_NOTES="Release notes here"
+        
+          # Authenticate (if not already done)
+          gcloud auth activate-service-account --key-file="${CREDENTIALS_FULL_PATH}"
+        
+          # Get access token with the correct scope
+          ACCESS_TOKEN=$(gcloud auth print-access-token --scopes=https://www.googleapis.com/auth/androidpublisher)
+        
+          echo "ACCESS_TOKEN: $ACCESS_TOKEN"
+        
+          # Create edit
+          echo "Creating Edit for package $PACKAGE_NAME"
+          EDIT_ID=$(curl -s -X POST \
+            "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}/edits" \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            | jq -r '.id')
+        
+          echo "Created edit: ${EDIT_ID}"
+        
+          # Upload AAB
+          echo "Uploading AAB"
+          BUNDLE_VERSION_CODE=$(curl -s -X POST \
+            "https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/${PACKAGE_NAME}/edits/${EDIT_ID}/bundles?uploadType=media" \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @"${BINARY_PATH}" \
+            | jq -r '.versionCode')
+        
+          echo "Uploaded bundle with version code: ${BUNDLE_VERSION_CODE}"
+        
+          # Set track and release notes
+          echo "Setting track and release notes"
+          curl -X PUT \
+            "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}/edits/${EDIT_ID}/tracks/${TRACK}" \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"releases\": [{
+                \"versionCodes\": [\"${BUNDLE_VERSION_CODE}\"],
+                \"releaseNotes\": [{
+                  \"language\": \"en-US\",
+                  \"text\": \"${RELEASE_NOTES}\"
+                }],
+                \"status\": \"completed\"
+              }]
+            }"
+        
+          # Commit edit
+          echo "Committing edit"
+          curl -X POST \
+            "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}/edits/${EDIT_ID}:commit" \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}"
+        
+          echo "Upload complete!"
+        
+        
+      - name: Cleanup
+        shell: bash
+        if: always()
+        run: |
+          rm -f google-credentials.json
+          rm -f release-notes.txt
+
+

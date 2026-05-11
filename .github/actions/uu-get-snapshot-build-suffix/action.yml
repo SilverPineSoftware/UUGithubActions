@@ -1,0 +1,19 @@
+name: 'UU Get Snapshot Build Suffix'
+description: 'Build a snapshot build suffix with build number and branch'
+
+outputs:
+  build_suffix:
+    description: 'The full build suffix with build number and branch'
+    value: ${{ steps.get-build-suffix.outputs.build_suffix }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Make build suffix
+      id: get-build-suffix
+      run: |
+        BRANCH="${{ github.ref_name }}"
+        BRANCH_SANITIZED=$(echo "$BRANCH" | tr '/' '-')
+        BUILD_SUFFIX=${{ github.run_number }}-$BRANCH_SANITIZED-SNAPSHOT
+        echo "build_suffix=$BUILD_SUFFIX" >> $GITHUB_OUTPUT
+      shell: bash

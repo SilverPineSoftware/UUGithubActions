@@ -1,0 +1,58 @@
+name: 'UU Android Tests'
+description: 'Run unit tests for a library'
+
+inputs:
+  module_name:
+    description: 'Gradle module name'
+    required: false
+    default: 'app'
+  module_folder:
+    description: 'Optional relative path to module source folder.'
+    required: false
+    default: '.'
+  java_distribution:
+    description: 'Java distribution'
+    required: true
+  java_version:
+    description: 'Java version'
+    required: true
+  build_suffix:
+    description: 'Build Suffix'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Prepare Build
+      id: prepare
+      uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-android-build-prepare@main
+      with:
+        module_name: ${{ inputs.module_name }}
+        module_folder: ${{ inputs.module_folder }}
+        build_suffix: ${{ inputs.build_suffix }}
+        java_distribution: ${{ inputs.java_distribution }}
+        java_version: ${{ inputs.java_version }}
+  
+    - name: Run Unit Tests
+      run: | 
+        if [ -n "${{ inputs.module_folder }}" ]; then
+          cd "${{ inputs.module_folder }}"
+        fi
+        ./gradlew clean :${{ inputs.module_name }}:test
+
+      shell: bash
+
+    - name: Extract repo name
+      id: repo-name
+      run: |
+        REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+        echo "name=$REPO_NAME" >> $GITHUB_OUTPUT
+      shell: bash
+          
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ steps.repo-name.outputs.name }}-${{ inputs.module_name }}-test-results-${{ steps.prepare.outputs.version }}
+        path: ${{ inputs.module_folder }}/${{ inputs.module_name }}/build/reports/tests
+        

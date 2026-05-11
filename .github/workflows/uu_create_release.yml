@@ -1,0 +1,92 @@
+name: UU Create Release
+permissions:
+  contents: write
+
+on:
+  workflow_call:
+    inputs:
+      artifacts_to_upload:
+        description: 'List of artifact names to upload to release (JSON array)'
+        required: false
+        type: string
+        default: '["test-results", "build-artifacts"]'
+    secrets:
+      UU_GITHUB_TOKEN: # needs different name that GITHUB_TOKEN
+        required: true
+  
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.UU_GITHUB_TOKEN }}
+
+  upload-release-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+
+      - name: Upload all artifacts to release
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.UU_GITHUB_TOKEN }}
+          ARTIFACTS_TO_UPLOAD: ${{ inputs.artifacts_to_upload }}
+        run: |
+          # Parse the JSON array of artifact names into a space-separated list
+          ARTIFACTS=$(echo "$ARTIFACTS_TO_UPLOAD" | jq -r '.[]' | tr '\n' ' ')
+          
+          # Function to check if artifact name contains any fragment from the list
+          should_upload() {
+            local artifact_name=$1
+            for allowed_fragment in $ARTIFACTS; do
+              if [[ "$artifact_name" == *"$allowed_fragment"* ]]; then
+                return 0
+              fi
+            done
+            return 1
+          }
+          
+          # Upload matching downloaded artifacts to the release
+          for artifact_dir in */; do
+            if [ -d "$artifact_dir" ]; then
+              artifact_name="${artifact_dir%/}"
+              if should_upload "$artifact_name"; then
+                echo "Uploading artifact directory: $artifact_name"
+                # Create a zip file from the artifact directory
+                zip -r "${artifact_name}.zip" "$artifact_dir"
+                # Upload to release
+                gh release upload "${{ github.ref_name }}" "${artifact_name}.zip" --clobber
+              else
+                echo "Skipping artifact directory: $artifact_name (not in upload list)"
+              fi
+            fi
+          done
+          
+          # Also upload any matching zip files that might already exist
+          for zip_file in *.zip; do
+            if [ -f "$zip_file" ]; then
+              artifact_name="${zip_file%.zip}"
+              if should_upload "$artifact_name"; then
+                echo "Uploading zip file: $zip_file"
+                gh release upload "${{ github.ref_name }}" "$zip_file" --clobber
+              else
+                echo "Skipping zip file: $zip_file (not in upload list)"
+              fi
+            fi
+          done
+
+      
+      

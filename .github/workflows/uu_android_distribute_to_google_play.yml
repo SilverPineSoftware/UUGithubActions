@@ -1,0 +1,39 @@
+name: UU Android Distribute To Firebase
+permissions:
+  contents: read
+ 
+on:
+  workflow_call:
+    inputs:
+      package_name:
+        description: 'Firebase Distribution Group'
+        required: false
+        type: string
+        default: ''
+      full_version:
+        description: 'Full Build Version'
+        required: true
+        type: string
+        default: ''
+      distribution_track:
+        description: 'Google Play Distribution Track'
+        required: false
+        type: string
+        default: 'internal'
+    secrets:
+      GOOGLE_PLAY_CREDENTIALS:
+        required: true
+      
+jobs:
+  build:
+    name: Distribute to Google Play
+    runs-on: macos-latest
+    steps:
+      - name: Distribute to Google Play
+        uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-android-distribute-to-google-play@main
+        with:
+          package_name: ${{ inputs.package_name }}
+          full_version: ${{ inputs.full_version }}
+          distribution_track: ${{ inputs.distribution_track }}
+          google_play_credentials: ${{ secrets.GOOGLE_PLAY_CREDENTIALS }}
+

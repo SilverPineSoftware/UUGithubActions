@@ -1,0 +1,38 @@
+name: Prepare Next Version
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      continue_on_error:
+        description: 'Continue workflow if the bump step fails (default false for manual runs)'
+        required: false
+        type: boolean
+        default: false
+  workflow_call:
+    secrets:
+      RELEASE_PAT:
+        required: true
+    inputs:
+      continue_on_error:
+        description: 'Continue workflow if the bump step fails'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  prepare-next-version:
+    name: Prepare Next Version
+    runs-on: ubuntu-latest
+    steps:
+      # Local composite actions must exist on disk before `uses: ./.github/actions/...` is resolved.
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Prepare Next Version
+        uses: ./.github/actions/uu-prepare-next-version
+        continue-on-error: ${{ inputs.continue_on_error }}
+        with:
+          release_pat: ${{ secrets.RELEASE_PAT }}

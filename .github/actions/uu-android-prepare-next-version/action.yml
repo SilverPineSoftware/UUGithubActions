@@ -1,0 +1,197 @@
+name: 'UU Android Prepare Next Version'
+description: 'Bump patch version in gradle.properties and commit to develop branch'
+
+inputs:
+  release_pat:
+    description: 'Github Personal Access Token'
+    required: true
+  gradle_properties_path:
+    description: 'Optional folder path where gradle.properties exists. Defaults to root if empty'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+      with:
+        token: ${{ inputs.release_pat }}
+        fetch-depth: 0  # Fetch all history for branches
+
+    - name: Configure Git
+      shell: bash
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Fetch all branches
+      shell: bash
+      run: |
+        git fetch origin main
+        git fetch origin develop
+
+    - name: Checkout main branch
+      shell: bash
+      run: |
+        git checkout main
+        git pull origin main
+
+    - name: Verify main and develop have same HEAD
+      shell: bash
+      id: verify-branches
+      run: |
+        MAIN_HEAD=$(git rev-parse origin/main)
+        DEVELOP_HEAD=$(git rev-parse origin/develop)
+        
+        echo "Main HEAD: $MAIN_HEAD"
+        echo "Develop HEAD: $DEVELOP_HEAD"
+        
+        if [ "$MAIN_HEAD" != "$DEVELOP_HEAD" ]; then
+          echo "::warning::Main and develop branches do not have the same HEAD. Skipping version bump."
+          echo "main_head=$MAIN_HEAD" >> $GITHUB_OUTPUT
+          echo "develop_head=$DEVELOP_HEAD" >> $GITHUB_OUTPUT
+          echo "branches_match=false" >> $GITHUB_OUTPUT
+          exit 0  # Exit gracefully, don't fail the workflow
+        else
+          echo "✅ Main and develop branches have the same HEAD"
+          echo "branches_match=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Read current version from gradle.properties
+      shell: bash
+      id: read-version
+      if: steps.verify-branches.outputs.branches_match == 'true'
+      run: |
+        GRADLE_PROPERTIES_DIR="${{ inputs.gradle_properties_path }}"
+        # Remove trailing slash if present
+        GRADLE_PROPERTIES_DIR="${GRADLE_PROPERTIES_DIR%/}"
+        # Construct full path
+        if [ -n "$GRADLE_PROPERTIES_DIR" ]; then
+          GRADLE_PROPERTIES="${GRADLE_PROPERTIES_DIR}/gradle.properties"
+        else
+          GRADLE_PROPERTIES="gradle.properties"
+        fi
+        
+        if [ ! -f "$GRADLE_PROPERTIES" ]; then
+          echo "::error::gradle.properties file not found"
+          exit 1
+        fi
+        
+        # Extract version line
+        VERSION_LINE=$(grep "^version=" "$GRADLE_PROPERTIES" || echo "")
+        if [ -z "$VERSION_LINE" ]; then
+          echo "::error::No version line found in gradle.properties"
+          exit 1
+        fi
+        
+        # Extract version number (format: version=1, version=1.2, or version=1.2.3)
+        CURRENT_VERSION=$(echo "$VERSION_LINE" | sed 's/version=//')
+        echo "Current version: $CURRENT_VERSION"
+        
+        # Validate version format (1, 2, or 3 digits separated by dots)
+        if [[ ! "$CURRENT_VERSION" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then
+          echo "::error::Version format is invalid. Expected x, x.y, or x.y.z, got: $CURRENT_VERSION"
+          exit 1
+        fi
+        
+        # Split version into parts and increment the last element
+        IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
+        NUM_PARTS=${#VERSION_PARTS[@]}
+        
+        # Increment the last element
+        LAST_INDEX=$((NUM_PARTS - 1))
+        VERSION_PARTS[$LAST_INDEX]=$((${VERSION_PARTS[$LAST_INDEX]} + 1))
+        
+        # Reconstruct version string
+        NEXT_VERSION=$(IFS='.'; echo "${VERSION_PARTS[*]}")
+        
+        echo "Next version: $NEXT_VERSION"
+        echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+        echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Checkout develop branch
+      shell: bash
+      if: steps.verify-branches.outputs.branches_match == 'true'
+      run: |
+        git checkout develop
+        git pull origin develop
+
+    - name: Update gradle.properties version
+      shell: bash
+      if: steps.verify-branches.outputs.branches_match == 'true'
+      run: |
+        GRADLE_PROPERTIES_DIR="${{ inputs.gradle_properties_path }}"
+        # Remove trailing slash if present
+        GRADLE_PROPERTIES_DIR="${GRADLE_PROPERTIES_DIR%/}"
+        # Construct full path
+        if [ -n "$GRADLE_PROPERTIES_DIR" ]; then
+          GRADLE_PROPERTIES="${GRADLE_PROPERTIES_DIR}/gradle.properties"
+        else
+          GRADLE_PROPERTIES="gradle.properties"
+        fi
+        
+        if [ ! -f "$GRADLE_PROPERTIES" ]; then
+          echo "::error::gradle.properties file not found"
+          exit 1
+        fi
+        
+        NEXT_VERSION="${{ steps.read-version.outputs.next_version }}"
+        
+        # Update version in gradle.properties
+        sed -i.bak "s/^version=.*/version=${NEXT_VERSION}/" "$GRADLE_PROPERTIES"
+        rm -f "${GRADLE_PROPERTIES}.bak"
+        
+        # Verify the change
+        echo "Updated gradle.properties:"
+        grep "^version=" "$GRADLE_PROPERTIES"
+
+    - name: Commit and push to develop
+      shell: bash
+      if: steps.verify-branches.outputs.branches_match == 'true'
+      env:
+        GITHUB_TOKEN: ${{ inputs.release_pat }}
+      run: |
+        GRADLE_PROPERTIES_DIR="${{ inputs.gradle_properties_path }}"
+        # Remove trailing slash if present
+        GRADLE_PROPERTIES_DIR="${GRADLE_PROPERTIES_DIR%/}"
+        # Construct full path
+        if [ -n "$GRADLE_PROPERTIES_DIR" ]; then
+          GRADLE_PROPERTIES="${GRADLE_PROPERTIES_DIR}/gradle.properties"
+        else
+          GRADLE_PROPERTIES="gradle.properties"
+        fi
+        
+        if [ ! -f "$GRADLE_PROPERTIES" ]; then
+          echo "::error::gradle.properties file not found"
+          exit 1
+        fi
+
+        # Stage gradle.properties and any .github ref bumps from the previous step.
+        git add "$GRADLE_PROPERTIES"
+
+        # Check if there are changes to commit
+        if git diff --staged --quiet; then
+          echo "No changes to commit - version is already ${{ steps.read-version.outputs.next_version }}"
+        else
+          git commit -m "Bump version to ${{ steps.read-version.outputs.next_version }}"
+
+          # Push to develop branch
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
+          git push origin develop
+
+          echo "✅ Successfully bumped version to ${{ steps.read-version.outputs.next_version }} on develop branch"
+        fi
+
+    - name: Summary
+      shell: bash
+      run: |
+        if [ "${{ steps.verify-branches.outputs.branches_match }}" == "true" ]; then
+          echo "✅ Successfully prepared next version: ${{ steps.read-version.outputs.next_version }}"
+          echo "📝 Version updated in develop branch"
+        else
+          echo "⚠️ Skipped version bump - main and develop branches are not in sync"
+          echo "Main HEAD: ${{ steps.verify-branches.outputs.main_head }}"
+          echo "Develop HEAD: ${{ steps.verify-branches.outputs.develop_head }}"
+        fi
+

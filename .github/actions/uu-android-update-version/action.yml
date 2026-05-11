@@ -1,0 +1,52 @@
+name: 'UU Android Update Version'
+description: 'Updates the version in the gradle.properties file'
+
+inputs:
+  module_folder:
+    description: 'Optional relative path to module source folder.'
+    required: false
+    default: '.'
+  build_suffix:
+    description: 'Build Suffix'
+    required: false
+    default: ''
+    
+outputs:
+  version:
+    description: 'The full version string that was set in gradle.properties'
+    value: ${{ steps.get-version.outputs.version }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Read version from gradle.properties
+      id: get-version
+      run: |
+        if [ -n "${{ inputs.module_folder }}" ]; then
+          cd "${{ inputs.module_folder }}"
+        fi
+        
+        if [ ! -f "gradle.properties" ]; then
+          echo "Error: gradle.properties not found"
+          exit 1
+        fi
+        
+        VERSION=$(grep "^version=" gradle.properties | cut -d'=' -f2)
+        if [ -z "$VERSION" ]; then
+          echo "Error: Could not read version from gradle.properties"
+          exit 1
+        fi
+        
+        BUILD_SUFFIX="${{ inputs.build_suffix }}"
+        FULL_VERSION=$VERSION
+        
+        if [ -n "$BUILD_SUFFIX" ]; then
+          FULL_VERSION=$VERSION.$BUILD_SUFFIX
+          sed -i.bak "s/^version=.*/version=${FULL_VERSION}/" gradle.properties
+        fi
+        
+        echo "version=$FULL_VERSION" >> "$GITHUB_OUTPUT"
+        echo "Full Version: $FULL_VERSION"
+        echo "Output set: version=$FULL_VERSION"
+      shell: bash
+        

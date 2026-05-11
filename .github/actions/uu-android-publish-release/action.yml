@@ -1,0 +1,67 @@
+name: 'UU Android Publish Release'
+description: 'Publish release to Maven Central'
+
+inputs:
+  module_name:
+    description: 'Gradle module name'
+    required: false
+    default: 'app'
+  module_folder:
+    description: 'Optional relative path to module source folder.'
+    required: false
+    default: '.'
+  java_distribution:
+    description: 'Java distribution'
+    required: true
+  java_version:
+    description: 'Java version'
+    required: true
+  maven_central_nexus_url:
+    description: 'Maven Central Nexus URL'
+    required: true
+  maven_central_snapshot_url:
+    description: 'Maven Central Snapshot URL'
+    required: true
+  ossrh_username:
+    description: 'OSSRH username'
+    required: true
+  ossrh_password:
+    description: 'OSSRH password'
+    required: true
+  signing_key_id:
+    description: 'Signing key ID'
+    required: true
+  signing_password:
+    description: 'Signing password'
+    required: true
+  signing_key:
+    description: 'Signing key'
+    required: true
+  sonatype_staging_profile_id:
+    description: 'Sonatype staging profile ID'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Build
+      uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-android-build@main
+      with:
+        module_name: ${{ inputs.module_name }}
+        module_folder: ${{ inputs.module_folder }}
+        java_distribution: ${{ inputs.java_distribution }}
+        java_version: ${{ inputs.java_version }}
+
+    - name: Publish to Maven Central
+      run: ./gradlew publishReleasePublicationToSonatypeRepository --max-workers 1 closeAndReleaseSonatypeStagingRepository -PbuildSnapshot=false
+      env:
+        MAVEN_CENTRAL_NEXUS_URL: ${{ inputs.maven_central_nexus_url }}
+        MAVEN_CENTRAL_SNAPSHOT_URL: ${{ inputs.maven_central_snapshot_url }}
+        OSSRH_USERNAME: ${{ inputs.ossrh_username }}
+        OSSRH_PASSWORD: ${{ inputs.ossrh_password }}
+        SIGNING_KEY_ID: ${{ inputs.signing_key_id }}
+        SIGNING_PASSWORD: ${{ inputs.signing_password }}
+        SIGNING_KEY: ${{ inputs.signing_key }}
+        SONATYPE_STAGING_PROFILE_ID: ${{ inputs.sonatype_staging_profile_id }}
+      shell: bash
+
