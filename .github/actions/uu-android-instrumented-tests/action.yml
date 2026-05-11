@@ -34,7 +34,7 @@ runs:
   steps:
     - name: Prepare Build
       id: prepare
-      uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-build-prepare@main
+      uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-android-build-prepare@main
       with:
         module_name: ${{ inputs.module_name }}
         module_folder: ${{ inputs.module_folder }}

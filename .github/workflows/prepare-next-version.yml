@@ -32,7 +32,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Prepare Next Version
-        uses: ./.github/actions/uu-prepare-next-version
+        uses: ./.github/actions/uu-android-prepare-next-version
         continue-on-error: ${{ inputs.continue_on_error }}
         with:
           release_pat: ${{ secrets.RELEASE_PAT }}

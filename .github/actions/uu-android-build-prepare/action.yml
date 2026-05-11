@@ -34,7 +34,7 @@ runs:
       
     - name: Update Version
       id: update-version
-      uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-update-version@main
+      uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-android-update-version@main
       with:
         module_folder: ${{ inputs.module_folder }}
         build_suffix: ${{ inputs.build_suffix }}
