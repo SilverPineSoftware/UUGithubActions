@@ -21,7 +21,7 @@ on:
         type: string
         default: ''
     secrets:
-      RELEASE_PAT:
+      READ_PACKAGES_PAT:
         description: 'PAT with read:packages for SilverpineSoftware GitHub Packages (Gradle resolves plugins before publish).'
         required: false
       MAVEN_CENTRAL_NEXUS_URL:
@@ -47,7 +47,7 @@ jobs:
     name: Publish Snapshot
     runs-on: macos-latest
     env:
-      GPR_TOKEN: ${{ secrets.RELEASE_PAT || github.token }}
+      GPR_TOKEN: ${{ secrets.READ_PACKAGES_PAT || github.token }}
     steps:
       - name: Publish Snapshot
         uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-android-publish-snapshot@main

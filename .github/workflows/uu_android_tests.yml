@@ -5,7 +5,7 @@ permissions:
 on:
   workflow_call:
     secrets:
-      RELEASE_PAT:
+      READ_PACKAGES_PAT:
         description: 'PAT with read:packages for SilverpineSoftware GitHub Packages. Pass caller repo secret.'
         required: false
     inputs:
@@ -43,7 +43,7 @@ jobs:
     runs-on: ${{ inputs.runner }}
     env:
       # Do not override GITHUB_TOKEN; Gradle reads GPR_TOKEN in settings.gradle.kts (UUKotlinCore).
-      GPR_TOKEN: ${{ secrets.RELEASE_PAT || github.token }}
+      GPR_TOKEN: ${{ secrets.READ_PACKAGES_PAT || github.token }}
     steps:
       - name: Run Tests
         uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-android-tests@main
