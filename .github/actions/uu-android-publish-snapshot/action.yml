@@ -72,3 +72,21 @@ runs:
         SONATYPE_STAGING_PROFILE_ID: ${{ inputs.sonatype_staging_profile_id }}
       shell: bash
 
+    - name: Extract repo name
+      id: repo-name
+      run: |
+        REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+        echo "name=$REPO_NAME" >> $GITHUB_OUTPUT
+      shell: bash
+
+    # Captures build outputs (AARs, POMs, sources, signatures) for every
+    # subproject Gradle assembled while publishing. For multi-module repos
+    # (e.g. UUKotlinTest with library + library_instrumented) this uploads
+    # all of them. The glob silently skips subprojects that didn't produce
+    # outputs (apps, buildSrc, etc.).
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ steps.repo-name.outputs.name }}-publish-artifacts-${{ steps.prepare.outputs.version }}
+        path: ${{ inputs.module_folder }}/*/build/outputs
+        if-no-files-found: warn
