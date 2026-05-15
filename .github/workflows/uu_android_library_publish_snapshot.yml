@@ -49,6 +49,14 @@ jobs:
     env:
       GPR_TOKEN: ${{ secrets.READ_PACKAGES_PAT || github.token }}
     steps:
+      # Forward the org/repo-level UU_KOTLIN_BUILD variable to Gradle as the
+      # `uu_build` project property. Persists for every subsequent step in
+      # this job (including all composite-action sub-steps).
+      - name: Wire UU_KOTLIN_BUILD into Gradle properties
+        if: vars.UU_KOTLIN_BUILD != ''
+        run: echo "ORG_GRADLE_PROJECT_uu_build=${{ vars.UU_KOTLIN_BUILD }}" >> "$GITHUB_ENV"
+        shell: bash
+
       - name: Publish Snapshot
         uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-android-publish-snapshot@main
         with:
