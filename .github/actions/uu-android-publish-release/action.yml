@@ -44,8 +44,9 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Build
-      uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-android-build@main
+    - name: Prepare Build
+      id: prepare
+      uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-android-build-prepare@main
       with:
         module_name: ${{ inputs.module_name }}
         module_folder: ${{ inputs.module_folder }}
