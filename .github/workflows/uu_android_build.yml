@@ -57,6 +57,7 @@ jobs:
           uu_kotlin_build: ${{ vars.UU_KOTLIN_BUILD }}
           uu_android_min_sdk: ${{ vars.UU_ANDROID_MIN_SDK }}
           uu_android_target_sdk: ${{ vars.UU_ANDROID_TARGET_SDK }}
+          uu_java_version: ${{ vars.UU_JAVA_VERSION }}
 
       - name: Build
         id: build
