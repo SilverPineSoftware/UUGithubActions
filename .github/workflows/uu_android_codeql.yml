@@ -1,0 +1,82 @@
+name: UU Android CodeQL
+
+# Advanced CodeQL for UU Android/Kotlin library repos: Actions workflows + manual
+# java-kotlin build via Gradle (resolves UUKotlinBuild from GitHub Packages).
+
+on:
+  workflow_call:
+    inputs:
+      module_name:
+        description: 'Gradle module to assemble for CodeQL manual build'
+        required: false
+        type: string
+        default: 'library'
+      module_folder:
+        description: 'Relative path to the Gradle project root'
+        required: false
+        type: string
+        default: '.'
+    secrets:
+      READ_PACKAGES_PAT:
+        description: 'PAT with read:packages for SilverpineSoftware GitHub Packages'
+        required: false
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            build-mode: none
+          - language: java-kotlin
+            build-mode: manual
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Load org variables into Gradle project properties
+        uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-android-load-environment-vars@main
+        with:
+          uu_kotlin_build: ${{ vars.UU_KOTLIN_BUILD }}
+          uu_android_min_sdk: ${{ vars.UU_ANDROID_MIN_SDK }}
+          uu_android_target_sdk: ${{ vars.UU_ANDROID_TARGET_SDK }}
+          uu_java_version: ${{ vars.UU_JAVA_VERSION }}
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: Setup Java
+        if: matrix.build-mode == 'manual'
+        uses: actions/setup-java@v5
+        with:
+          distribution: ${{ vars.UU_JAVA_DISTRIBUTION }}
+          java-version: ${{ vars.UU_JAVA_VERSION }}
+
+      - name: Run manual build steps
+        if: matrix.build-mode == 'manual'
+        shell: bash
+        env:
+          GPR_TOKEN: ${{ secrets.READ_PACKAGES_PAT || github.token }}
+        run: |
+          if [ -n "${{ inputs.module_folder }}" ]; then
+            cd "${{ inputs.module_folder }}"
+          fi
+          ./gradlew clean :${{ inputs.module_name }}:assembleRelease
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"

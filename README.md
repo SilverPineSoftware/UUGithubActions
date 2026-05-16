@@ -36,7 +36,7 @@ A standard UU library repo (e.g. **UUKotlinCore**) usually needs **three workflo
                         └─► prepare-next-version on develop (optional)
 ```
 
-Optional extras in some repos: `run_tests.yml` / `run_instrumented_tests.yml` (manual or PR), `build.yml`, `codeql.yml`.
+Optional extras in some repos: `run_tests.yml` / `run_instrumented_tests.yml` (manual or PR), `build.yml`, **`codeql.yml`** (security scanning).
 
 ---
 
@@ -246,6 +246,30 @@ Publish artifacts are uploaded from `${{ module_folder }}/*/build/outputs` so ev
 
 Use `module_name: app` for **`uu_android_build`** (assemble/bundle). Library publish workflows still target `module_name: library` unless the app is what you ship.
 
+### CodeQL (`codeql.yml`)
+
+Thin consumer workflow: triggers on `main` push/PR and a weekly schedule; delegates to **`uu_android_codeql`**.
+
+```yaml
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '18 8 * * 0'
+
+jobs:
+  analyze:
+    uses: SilverPineSoftware/UUGithubActions/.github/workflows/uu_android_codeql.yml@main
+    secrets:
+      READ_PACKAGES_PAT: ${{ secrets.CI_READ_PACKAGES_GITHUB_TOKEN }}
+```
+
+The shared workflow analyzes **Actions** (`build-mode: none`) and **Java/Kotlin** (`build-mode: manual`). For Kotlin it loads org Gradle variables, runs `actions/setup-java`, then `./gradlew clean :library:assembleRelease` (override `module_name` / `module_folder` if needed).
+
 ---
 
 ## Reusable workflows
@@ -264,6 +288,7 @@ Callable via `workflow_call` from consumer repos.
 | [`uu_create_release.yml`](.github/workflows/uu_create_release.yml) | GitHub Release for current tag; optional artifact upload |
 | [`uu_distribute_to_firebase.yml`](.github/workflows/uu_distribute_to_firebase.yml) | Upload APK to Firebase App Distribution |
 | [`uu_android_distribute_to_google_play.yml`](.github/workflows/uu_android_distribute_to_google_play.yml) | Upload AAB to Google Play (workflow file name references Firebase historically; job uses Google Play action) |
+| [`uu_android_codeql.yml`](.github/workflows/uu_android_codeql.yml) | CodeQL advanced setup: Actions + manual `java-kotlin` Gradle build |
 
 ### Common inputs
 
