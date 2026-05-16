@@ -1,4 +1,9 @@
 name: UU Android CodeQL
+permissions:
+    contents: read
+    packages: read
+    actions: read
+    security-events: write
 
 # Advanced CodeQL for UU Android/Kotlin library repos: Actions workflows + manual
 # java-kotlin build via Gradle (resolves UUKotlinBuild from GitHub Packages).
