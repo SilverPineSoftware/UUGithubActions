@@ -51,21 +51,12 @@ jobs:
       full_version: ${{ steps.build.outputs.full_version }}
     
     steps:
-      # Forward org/repository-level GitHub Variables into Gradle project
-      # properties (ORG_GRADLE_PROJECT_*). Persists for every subsequent step
-      # in this job (including all composite-action sub-steps).
       - name: Wire org variables into Gradle project properties
-        run: |
-          if [ -n "${{ vars.UU_KOTLIN_BUILD }}" ]; then
-            echo "ORG_GRADLE_PROJECT_uu_build=${{ vars.UU_KOTLIN_BUILD }}" >> "$GITHUB_ENV"
-          fi
-          if [ -n "${{ vars.UU_ANDROID_MIN_SDK }}" ]; then
-            echo "ORG_GRADLE_PROJECT_uu_min_sdk=${{ vars.UU_ANDROID_MIN_SDK }}" >> "$GITHUB_ENV"
-          fi
-          if [ -n "${{ vars.UU_ANDROID_TARGET_SDK }}" ]; then
-            echo "ORG_GRADLE_PROJECT_uu_target_sdk=${{ vars.UU_ANDROID_TARGET_SDK }}" >> "$GITHUB_ENV"
-          fi
-        shell: bash
+        uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-android-wire-org-gradle-properties@main
+        with:
+          uu_kotlin_build: ${{ vars.UU_KOTLIN_BUILD }}
+          uu_android_min_sdk: ${{ vars.UU_ANDROID_MIN_SDK }}
+          uu_android_target_sdk: ${{ vars.UU_ANDROID_TARGET_SDK }}
 
       - name: Build
         id: build

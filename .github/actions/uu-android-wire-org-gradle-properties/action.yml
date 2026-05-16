@@ -1,0 +1,36 @@
+name: 'UU Android wire org Gradle properties'
+description: >
+  Append ORG_GRADLE_PROJECT_* lines to GITHUB_ENV so Gradle picks them up as
+  project properties. Call from a workflow (or job) that can read GitHub
+  Variables; pass values via inputs—composite actions cannot use the vars
+  context themselves.
+
+inputs:
+  uu_kotlin_build:
+    description: 'UU_KOTLIN_BUILD value (Gradle uu_build). Empty skips.'
+    required: false
+    default: ''
+  uu_android_min_sdk:
+    description: 'UU_ANDROID_MIN_SDK value (Gradle uu_min_sdk). Empty skips.'
+    required: false
+    default: ''
+  uu_android_target_sdk:
+    description: 'UU_ANDROID_TARGET_SDK value (Gradle uu_target_sdk). Empty skips.'
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Append ORG_GRADLE_PROJECT_* to GITHUB_ENV
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.uu_kotlin_build }}" ]; then
+          echo "ORG_GRADLE_PROJECT_uu_build=${{ inputs.uu_kotlin_build }}" >> "$GITHUB_ENV"
+        fi
+        if [ -n "${{ inputs.uu_android_min_sdk }}" ]; then
+          echo "ORG_GRADLE_PROJECT_uu_min_sdk=${{ inputs.uu_android_min_sdk }}" >> "$GITHUB_ENV"
+        fi
+        if [ -n "${{ inputs.uu_android_target_sdk }}" ]; then
+          echo "ORG_GRADLE_PROJECT_uu_target_sdk=${{ inputs.uu_android_target_sdk }}" >> "$GITHUB_ENV"
+        fi
