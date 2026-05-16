@@ -52,7 +52,7 @@ jobs:
     
     steps:
       - name: Wire org variables into Gradle project properties
-        uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-android-wire-org-gradle-properties@main
+        uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-android-load-environment-vars@main
         with:
           uu_kotlin_build: ${{ vars.UU_KOTLIN_BUILD }}
           uu_android_min_sdk: ${{ vars.UU_ANDROID_MIN_SDK }}
