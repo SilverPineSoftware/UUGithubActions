@@ -72,6 +72,30 @@ runs:
         SONATYPE_STAGING_PROFILE_ID: ${{ inputs.sonatype_staging_profile_id }}
       shell: bash
 
+    - name: Write snapshot publish summary
+      if: success()
+      run: |
+        set -euo pipefail
+
+        if [ -n "${{ inputs.module_folder }}" ]; then
+          cd "${{ inputs.module_folder }}"
+        fi
+
+        VERSION="${{ steps.prepare.outputs.version }}"
+        PROPS_FILE="${{ inputs.module_name }}/gradle.properties"
+        ARTIFACT_ID=$(grep "^uu_publish_artifact_id=" "$PROPS_FILE" | cut -d'=' -f2-)
+        GROUP_ID="com.silverpine.uu"
+
+        {
+          echo "### Snapshot published"
+          echo ""
+          echo "| | |"
+          echo "|---|---|"
+          echo "| **Version** | \`${VERSION}\` |"
+          echo "| **Coordinates** | \`${GROUP_ID}:${ARTIFACT_ID}:${VERSION}\` |"
+        } >> "$GITHUB_STEP_SUMMARY"
+      shell: bash
+
     - name: Extract repo name
       id: repo-name
       run: |
