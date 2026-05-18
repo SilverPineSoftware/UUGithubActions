@@ -10,6 +10,11 @@ on:
         required: false
         type: string
         default: '["test-results", "build-artifacts"]'
+      release_notes_path:
+        description: 'Relative path to release notes markdown in the repository root (used when the file exists)'
+        required: false
+        type: string
+        default: 'release_notes.md'
     secrets:
       UU_GITHUB_TOKEN: # needs different name that GITHUB_TOKEN
         required: true
@@ -18,7 +23,35 @@ jobs:
   create-release:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Check for release notes
+        id: release_notes
+        run: |
+          NOTES_PATH="${{ inputs.release_notes_path }}"
+          if [ -f "$NOTES_PATH" ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "path=$NOTES_PATH" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
+
       - name: Create Release
+        if: steps.release_notes.outputs.found == 'true'
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          body_path: ${{ steps.release_notes.outputs.path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.UU_GITHUB_TOKEN }}
+
+      - name: Create Release
+        if: steps.release_notes.outputs.found != 'true'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
@@ -41,6 +74,7 @@ jobs:
 
       - name: Upload all artifacts to release
         if: always()
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.UU_GITHUB_TOKEN }}
           ARTIFACTS_TO_UPLOAD: ${{ inputs.artifacts_to_upload }}
@@ -75,7 +109,7 @@ jobs:
             fi
           done
           
-          # Also upload any matching zip files that might already exist
+          # Also upload matching zip files that might already exist
           for zip_file in *.zip; do
             if [ -f "$zip_file" ]; then
               artifact_name="${zip_file%.zip}"
@@ -87,6 +121,3 @@ jobs:
               fi
             fi
           done
-
-      
-      
