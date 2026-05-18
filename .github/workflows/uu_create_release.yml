@@ -62,23 +62,54 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.UU_GITHUB_TOKEN }}
 
   upload-release-artifacts:
+    needs: create-release
     runs-on: ubuntu-latest
     steps:
 
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Wait for GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.UU_GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          TAG="${{ github.ref_name }}"
+          REPO="${{ github.repository }}"
+          MAX_ATTEMPTS=30
+          SLEEP_SECONDS=5
+
+          echo "Waiting for release tag '$TAG' in $REPO to be visible to the API..."
+
+          for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
+            if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+              echo "Release '$TAG' is available (attempt $attempt/$MAX_ATTEMPTS)"
+              gh release view "$TAG" --repo "$REPO"
+              exit 0
+            fi
+
+            echo "Release '$TAG' not found yet (attempt $attempt/$MAX_ATTEMPTS); retrying in ${SLEEP_SECONDS}s..."
+            sleep "$SLEEP_SECONDS"
+          done
+
+          echo "Timed out after $((MAX_ATTEMPTS * SLEEP_SECONDS))s waiting for release '$TAG' in $REPO" >&2
+          exit 1
+
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         continue-on-error: true
 
       - name: Upload all artifacts to release
-        if: always()
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.UU_GITHUB_TOKEN }}
           ARTIFACTS_TO_UPLOAD: ${{ inputs.artifacts_to_upload }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
+          set -euo pipefail
           # Parse the JSON array of artifact names into a space-separated list
           ARTIFACTS=$(echo "$ARTIFACTS_TO_UPLOAD" | jq -r '.[]' | tr '\n' ' ')
           
@@ -102,7 +133,7 @@ jobs:
                 # Create a zip file from the artifact directory
                 zip -r "${artifact_name}.zip" "$artifact_dir"
                 # Upload to release
-                gh release upload "${{ github.ref_name }}" "${artifact_name}.zip" --clobber
+                gh release upload "$RELEASE_TAG" "${artifact_name}.zip" --repo "$GITHUB_REPOSITORY" --clobber
               else
                 echo "Skipping artifact directory: $artifact_name (not in upload list)"
               fi
@@ -115,7 +146,7 @@ jobs:
               artifact_name="${zip_file%.zip}"
               if should_upload "$artifact_name"; then
                 echo "Uploading zip file: $zip_file"
-                gh release upload "${{ github.ref_name }}" "$zip_file" --clobber
+                gh release upload "$RELEASE_TAG" "$zip_file" --repo "$GITHUB_REPOSITORY" --clobber
               else
                 echo "Skipping zip file: $zip_file (not in upload list)"
               fi
