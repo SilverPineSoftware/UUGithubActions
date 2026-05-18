@@ -66,6 +66,37 @@ runs:
         SONATYPE_STAGING_PROFILE_ID: ${{ inputs.sonatype_staging_profile_id }}
       shell: bash
 
+    - name: Write release publish summary
+      if: success()
+      run: |
+        set -euo pipefail
+
+        if [ -n "${{ inputs.module_folder }}" ]; then
+          cd "${{ inputs.module_folder }}"
+        fi
+
+        VERSION="${{ steps.prepare.outputs.version }}"
+        PROPS_FILE="${{ inputs.module_name }}/gradle.properties"
+        ARTIFACT_ID=$(grep "^uu_publish_artifact_id=" "$PROPS_FILE" | cut -d'=' -f2-)
+        GROUP_ID="com.silverpine.uu"
+        GROUP_PATH="${GROUP_ID//.//}"
+        MAVEN_RELEASE_URL="https://repo1.maven.org/maven2/${GROUP_PATH}/${ARTIFACT_ID}/${VERSION}/"
+        CENTRAL_PORTAL_URL="https://central.sonatype.com/artifact/${GROUP_ID}/${ARTIFACT_ID}/${VERSION}"
+
+        {
+          echo "### Release published"
+          echo ""
+          echo "Release artifacts were submitted to Maven Central. The links below may take some time to become available after Sonatype sync completes."
+          echo ""
+          echo "| | |"
+          echo "|---|---|"
+          echo "| **Version** | \`${VERSION}\` |"
+          echo "| **Coordinates** | \`${GROUP_ID}:${ARTIFACT_ID}:${VERSION}\` |"
+          echo "| **Maven Central (repo)** | [repo1.maven.org](${MAVEN_RELEASE_URL}) |"
+          echo "| **Maven Central (portal)** | [central.sonatype.com](${CENTRAL_PORTAL_URL}) |"
+        } >> "$GITHUB_STEP_SUMMARY"
+      shell: bash
+
     - name: Extract repo name
       id: repo-name
       run: |
