@@ -75,6 +75,7 @@ jobs:
         shell: bash
         env:
           GPR_TOKEN: ${{ secrets.READ_PACKAGES_PAT || github.token }}
+          UU_KOTLIN_BUILD_PACKAGE_URL: ${{ secrets.UU_KOTLIN_BUILD_PACKAGE_URL }}
         run: |
           if [ -n "${{ inputs.module_folder }}" ]; then
             cd "${{ inputs.module_folder }}"

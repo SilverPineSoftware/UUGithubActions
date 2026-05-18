@@ -28,6 +28,8 @@ on:
         required: true
       MAVEN_CENTRAL_SNAPSHOT_URL:
         required: true
+      UU_KOTLIN_BUILD_PACKAGE_URL:
+        required: true
       OSSRH_USERNAME:
         required: true
       OSSRH_PASSWORD:
@@ -48,6 +50,7 @@ jobs:
     runs-on: macos-latest
     env:
       GPR_TOKEN: ${{ secrets.READ_PACKAGES_PAT || github.token }}
+      UU_KOTLIN_BUILD_PACKAGE_URL: ${{ secrets.UU_KOTLIN_BUILD_PACKAGE_URL }}
     steps:
       - name: Wire org variables into Gradle project properties
         uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-android-load-environment-vars@main

@@ -8,6 +8,8 @@ on:
       READ_PACKAGES_PAT:
         description: 'PAT with read:packages for SilverpineSoftware GitHub Packages (Gradle plugins from UUKotlinBuild). Pass caller repo secret.'
         required: false
+      UU_KOTLIN_BUILD_PACKAGE_URL:
+        required: true
     inputs:
       configuration:
         description: 'Test configuration to run'
@@ -48,6 +50,7 @@ jobs:
     runs-on: ${{ inputs.runner }}
     env:
       GPR_TOKEN: ${{ secrets.READ_PACKAGES_PAT || github.token }}
+      UU_KOTLIN_BUILD_PACKAGE_URL: ${{ secrets.UU_KOTLIN_BUILD_PACKAGE_URL }}
     steps:
       - name: Wire org variables into Gradle project properties
         uses: SilverPineSoftware/UUGithubActions/.github/actions/uu-android-load-environment-vars@main

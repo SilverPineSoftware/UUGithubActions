@@ -37,6 +37,8 @@ on:
         required: false
       SIGNING_PASSWORD:
         required: false
+      UU_KOTLIN_BUILD_PACKAGE_URL:
+        required: true
     outputs:
       full_version:
         description: 'The full build suffix with build number and branch'
@@ -47,6 +49,8 @@ jobs:
   build:
     name: Do Build
     runs-on: macos-latest
+    env:
+      UU_KOTLIN_BUILD_PACKAGE_URL: ${{ secrets.UU_KOTLIN_BUILD_PACKAGE_URL }}
     outputs:
       full_version: ${{ steps.build.outputs.full_version }}
     
