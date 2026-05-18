@@ -25,6 +25,8 @@ on:
       READ_PACKAGES_PAT:
         description: 'PAT with read:packages for SilverpineSoftware GitHub Packages'
         required: false
+      UU_KOTLIN_BUILD_PACKAGE_URL:
+        required: true
 
 jobs:
   analyze:
